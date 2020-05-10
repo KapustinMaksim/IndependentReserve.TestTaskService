@@ -1,0 +1,14 @@
+Independentreserve.Common.Tools/bin/*
+Independentreserve.Common.Tools/obj/*
+
+IndependentReserve.DataContracts.OrderBook/bin/*
+IndependentReserve.DataContracts.OrderBook/obj/*
+
+IndependentReserve.DataProviders/bin/*
+IndependentReserve.DataProviders/obj/*
+
+Independentreserve.TestTask/bin/*
+Independentreserve.TestTask/obj/*
+
+IndependentReserve.Worker/bin/*
+IndependentReserve.Worker/obj/*

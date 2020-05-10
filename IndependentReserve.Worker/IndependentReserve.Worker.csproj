@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NLog.Web.AspNetCore" Version="4.9.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Independentreserve.Common.Tools\IndependentReserve.Common.Tools.csproj" />
+    <ProjectReference Include="..\IndependentReserve.DataContracts.OrderBook\IndependentReserve.DataContracts.OrderBook.csproj" />
+  </ItemGroup>
+
+</Project>
