@@ -22,7 +22,7 @@ namespace IndependentReserve.Worker.Worker.Containers
         private readonly ProviderConfigModel _configurations;
         private readonly RefreshBufferFactory _refreshBufferFactory;
 
-        private readonly ManualResetEvent _signalEvent;
+        private readonly ManualResetEvent _orderBookIsReadyEvent;
         private readonly ConcurrentDictionary<Guid, ExtraOrderDto> _orderBookBuffer;
         private readonly ConcurrentQueue<OrderChangeDto> _refreshBufferQueue;
         private volatile bool _listenBufferQueue;
@@ -36,7 +36,7 @@ namespace IndependentReserve.Worker.Worker.Containers
             _configurations = configurations;
             PrimaryCurrencyCode = primaryCurrencyCode;
             SecondaryCurrencyCode = secondaryCurrencyCode;
-            _signalEvent = new ManualResetEvent(false);
+            _orderBookIsReadyEvent = new ManualResetEvent(false);
             _orderBookBuffer = new ConcurrentDictionary<Guid, ExtraOrderDto>();
             _refreshBufferQueue = new ConcurrentQueue<OrderChangeDto>();
             _refreshBufferFactory = new RefreshBufferFactory(_orderBookBuffer);
@@ -52,7 +52,7 @@ namespace IndependentReserve.Worker.Worker.Containers
 
         public ExtraOrderBookDto GetAllOrders()
         {
-            _signalEvent.WaitOne();
+            _orderBookIsReadyEvent.WaitOne();
             var result = _orderBookBuffer.Select(o => o.Value).ToList();
             var lastOrder = result.OrderByDescending(o => o.UpdateDateTime).FirstOrDefault(o=>o.Nonce.HasValue);
 
@@ -89,12 +89,13 @@ namespace IndependentReserve.Worker.Worker.Containers
                 }
                 else
                 {
-                    _signalEvent.Reset();
+                    _orderBookIsReadyEvent.Reset();
                     await FetchOrderBook();
                     _listenBufferQueue = true;
                 }
                 await Task.Delay(new TimeSpan(100));
             }
+            _orderBookIsReadyEvent.Dispose();
         }
 
         private void ProcessOrderBookBuffer()
@@ -106,7 +107,7 @@ namespace IndependentReserve.Worker.Worker.Containers
             
             if (orderChangeDto.Event == OrderChangeEvent.NewOrder ||
                 orderChangeDto.Event == OrderChangeEvent.OrderChanged)
-                _signalEvent.Set();
+                _orderBookIsReadyEvent.Set();
         }
 
         private async Task FetchOrderBook()

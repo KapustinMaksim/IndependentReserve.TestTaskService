@@ -17,7 +17,8 @@ namespace IndependentReserve.Worker.Worker.WsChannel
         private readonly WsMessageProcessor _wsMessageProcessor;
         private readonly ProviderConfigModel _configurations;
         private readonly List<IFetchService> _containers;
-        
+
+        private readonly ManualResetEvent _monitorLaunchEvent;
         private volatile bool _apiIsAlive = true;
 
         public WsChannelMonitor(ProviderConfigModel configurations, List<IFetchService> containers)
@@ -25,6 +26,7 @@ namespace IndependentReserve.Worker.Worker.WsChannel
             _configurations = configurations;
             _containers = containers;
             _wsMessageProcessor = new WsMessageProcessor(containers.Cast<IRefreshBufferQueue>().ToList());
+            _monitorLaunchEvent = new ManualResetEvent(false);
         }
 
         delegate void OnRejectEventHandler();
@@ -37,14 +39,19 @@ namespace IndependentReserve.Worker.Worker.WsChannel
         {
             _apiIsAlive = false;
             OnOnShutDown?.Invoke();
+            _monitorLaunchEvent.Dispose();
         }
 
         public void InstallBackgroundMonitor()
-            => Task.Factory.StartNew(async () =>
+        {
+            Task.Factory.StartNew(async () =>
             {
-                InstallContainers();
                 await InstallWsConnection();
             });
+
+            _monitorLaunchEvent.WaitOne();
+            InstallContainers();
+        }
 
         private void InstallContainers()
         {
@@ -52,7 +59,7 @@ namespace IndependentReserve.Worker.Worker.WsChannel
             {
                 OnReject += container.ReloadOrderBook;
                 OnOnShutDown += container.ShutDown;
-                Task.Factory.StartNew(async ()=> await container.InstallContainer(), TaskCreationOptions.AttachedToParent);
+                Task.Factory.StartNew(async ()=> await container.InstallContainer());
             }
         }
 
@@ -64,6 +71,8 @@ namespace IndependentReserve.Worker.Worker.WsChannel
                 {
                     using var ws = new ClientWebSocket();
                     await ws.ConnectAsync(_configurations.WebSocketChannelUri, CancellationToken.None);
+
+                    _monitorLaunchEvent.Set();
                         
                     while (ws.State == WebSocketState.Open)
                     {
